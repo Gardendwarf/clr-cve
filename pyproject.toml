@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clr-cve"
+version = "0.1.0"
+description = "Shared CVE prioritisation for clr security tools: CISA KEV, EPSS, CVSS and public-exploit signal to one severity."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "clrTech Solutions", email = "hello@clrpath.co.za" }]
+dependencies = ["httpx>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/Gardendwarf/clr-cve"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clr_cve"]
