@@ -24,7 +24,7 @@ import time
 
 import httpx
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 EPSS_URL = "https://api.first.org/data/v1/epss"
@@ -32,6 +32,11 @@ EPSS_URL = "https://api.first.org/data/v1/epss"
 # column) and ProjectDiscovery's Nuclei CVE template list (one JSON object per line).
 EXPLOITDB_URL = "https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv"
 NUCLEI_URL = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/cves.json"
+# pocindex aggregates public PoCs from GitHub, Nuclei, Metasploit, Exploit-DB and Vulhub into
+# one keyless JSON. It is a supplementary breadth source (Metasploit and Vulhub are not covered
+# by the two feeds above); the authoritative KEV and EPSS signals stay on their official sources.
+# Confirm this exact endpoint path once it runs where the host can reach pocindex.io.
+POCINDEX_URL = "https://pocindex.io/CVE_list.json"
 _CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.I)
 
 # Outbound User-Agent. Each app can set its own with configure(); this is a sensible default.
@@ -40,7 +45,8 @@ _USER_AGENT = f"clr-cve/{__version__} (+https://github.com/Gardendwarf/clr-cve)"
 # Feeds are large and change slowly; cache in-process for a day so a scan does not re-download.
 _KEV = {"at": 0.0, "ids": set()}
 _KEV_TTL = 86400
-_EXPLOIT = {"edb": {"at": 0.0, "ids": set()}, "nuclei": {"at": 0.0, "ids": set()}}
+_EXPLOIT = {"edb": {"at": 0.0, "ids": set()}, "nuclei": {"at": 0.0, "ids": set()},
+            "pocindex": {"at": 0.0, "ids": set()}}
 
 
 def configure(user_agent: str | None = None) -> None:
@@ -105,6 +111,31 @@ def _parse_nuclei(text: str) -> set[str]:
     return out
 
 
+def _parse_pocindex(text: str) -> set[str]:
+    """CVE ids that have a public PoC per pocindex. Tolerant of either layout: a JSON object
+    keyed by CVE id, or a list of records carrying a cve/id field. Empty on anything unexpected."""
+    out: set[str] = set()
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return out
+    if isinstance(data, dict):
+        for k in data:
+            if isinstance(k, str) and _CVE_RE.fullmatch(k.strip()):
+                out.add(k.strip().upper())
+    elif isinstance(data, list):
+        for item in data:
+            if isinstance(item, str) and _CVE_RE.fullmatch(item.strip()):
+                out.add(item.strip().upper())
+            elif isinstance(item, dict):
+                for key in ("cve", "id", "CVE", "cve_id", "cveID"):
+                    v = item.get(key)
+                    if isinstance(v, str) and _CVE_RE.fullmatch(v.strip()):
+                        out.add(v.strip().upper())
+                        break
+    return out
+
+
 def _exploit_source(key: str, url: str, parse) -> set[str]:
     """One exploit list, cached for a day. Empty (never raises) when the download fails."""
     cache = _EXPLOIT[key]
@@ -131,7 +162,8 @@ def has_public_exploit(cve_ids: list[str]) -> set[str]:
     if not wanted:
         return set()
     known = _exploit_source("edb", EXPLOITDB_URL, _parse_exploitdb) | \
-        _exploit_source("nuclei", NUCLEI_URL, _parse_nuclei)
+        _exploit_source("nuclei", NUCLEI_URL, _parse_nuclei) | \
+        _exploit_source("pocindex", POCINDEX_URL, _parse_pocindex)
     return {c for c in cve_ids if c and c.upper() in known}
 
 

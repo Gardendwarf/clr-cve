@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clr-cve"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shared CVE prioritisation for clr security tools: CISA KEV, EPSS, CVSS and public-exploit signal to one severity."
 readme = "README.md"
 requires-python = ">=3.11"

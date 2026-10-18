@@ -7,7 +7,7 @@ Shared CVE prioritisation for clr security tools. One severity, derived the same
 Turns a raw CVE id into a priority by combining four signals:
 
 1. CISA KEV (Known Exploited Vulnerabilities) - attackers are using it right now. Always critical.
-2. A public exploit exists (Exploit-DB or a Nuclei template). At least high, critical when CVSS is also high.
+2. A public exploit exists. At least high, critical when CVSS is also high. Checked across Exploit-DB, Nuclei, and pocindex (which adds Metasploit and Vulhub breadth). KEV and EPSS stay on their official sources; pocindex only widens the exploit signal, so no single aggregator can swing the severity.
 3. CVSS base score, when you have one.
 4. EPSS - the probability it will be exploited in the near term.
 

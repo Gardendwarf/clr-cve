@@ -61,6 +61,14 @@ def test_enrich_includes_exploit_flag(monkeypatch):
     assert out["CVE-2024-0003"]["severity"] == "high"  # CVSS 8.0 alone, no exploit
 
 
+def test_parse_pocindex_dict_and_list():
+    d = '{"CVE-2024-0001": {"poc": ["x"]}, "not-a-cve": {}, "CVE-2024-0002": {}}'
+    assert cve._parse_pocindex(d) == {"CVE-2024-0001", "CVE-2024-0002"}
+    lst = '[{"cve": "CVE-2023-1111", "msf": true}, {"id": "CVE-2023-2222"}, "CVE-2023-3333", {"nope": 1}]'
+    assert cve._parse_pocindex(lst) == {"CVE-2023-1111", "CVE-2023-2222", "CVE-2023-3333"}
+    assert cve._parse_pocindex("not json") == set()
+
+
 def test_has_public_exploit_parses_and_degrades(monkeypatch):
     edb = "id,file,codes\n1,a,CVE-2009-3699;OSVDB-1\n2,b,\n"
     nuc = '{"ID":"CVE-2021-0001"}\nnot json\n'
